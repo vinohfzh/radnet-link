@@ -9,8 +9,9 @@ import {
   Trash2,
   QrCode,
   ExternalLink,
-  X,
 } from "lucide-react";
+import QRModal from "../components/QRModal";
+import { useToast } from "../components/ToastProvider";
 
 type Link = {
   id: string;
@@ -22,8 +23,9 @@ type Link = {
 
 export default function DashboardPage() {
   const [data, setData] = useState<any>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [qrLink, setQrLink] = useState<Link | null>(null);
+
+  const { showToast } = useToast(); // ✅ HOOK DI DALAM COMPONENT
 
   const fetchData = () => {
     fetch("/api/links")
@@ -35,12 +37,11 @@ export default function DashboardPage() {
     fetchData();
   }, []);
 
-  const handleCopy = (shortCode: string, id: string) => {
+  const handleCopy = (shortCode: string) => {
     navigator.clipboard.writeText(
       `${window.location.origin}/${shortCode}`
     );
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 1500);
+    showToast("Link berhasil disalin", "success"); // ✅ TOAST
   };
 
   if (!data) return <p className="p-8">Loading...</p>;
@@ -48,7 +49,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       {/* HEADER */}
-      <header className="bg-white border-b border-gray-200">
+      <header className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-6 py-6 flex items-center gap-3">
           <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
             <Link2 className="text-white w-5 h-5" />
@@ -78,9 +79,9 @@ export default function DashboardPage() {
         </div>
 
         {/* TABLE */}
-        <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+        <div className="bg-white border rounded-xl overflow-hidden">
           <table className="w-full">
-            <thead className="bg-gray-50 text-gray-500 text-sm">
+            <thead className="bg-gray-50 text-sm text-gray-500">
               <tr>
                 <th className="px-6 py-3 text-left">Short</th>
                 <th className="px-6 py-3 text-left">Original</th>
@@ -89,6 +90,7 @@ export default function DashboardPage() {
                 <th className="px-6 py-3 text-center">Actions</th>
               </tr>
             </thead>
+
             <tbody className="divide-y">
               {data.links.map((link: Link) => (
                 <tr key={link.id} className="hover:bg-gray-50">
@@ -117,7 +119,7 @@ export default function DashboardPage() {
 
                   <td className="px-6 py-4 text-center">
                     <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      className={`px-2 py-1 rounded-full text-xs ${
                         link.isActive
                           ? "bg-green-100 text-green-700"
                           : "bg-gray-200 text-gray-600"
@@ -130,17 +132,15 @@ export default function DashboardPage() {
                   <td className="px-6 py-4">
                     <div className="flex justify-center gap-2">
                       <button
-                        onClick={() =>
-                          handleCopy(link.shortCode, link.id)
-                        }
-                        className="p-2 rounded-lg hover:bg-blue-50 text-gray-500 hover:text-blue-600"
+                        onClick={() => handleCopy(link.shortCode)}
+                        className="p-2 hover:bg-blue-50 rounded"
                       >
                         <Copy size={16} />
                       </button>
 
                       <button
                         onClick={() => setQrLink(link)}
-                        className="p-2 rounded-lg hover:bg-purple-50 text-gray-500 hover:text-purple-600"
+                        className="p-2 hover:bg-purple-50 rounded"
                       >
                         <QrCode size={16} />
                       </button>
@@ -151,7 +151,7 @@ export default function DashboardPage() {
                             method: "PATCH",
                           }).then(fetchData)
                         }
-                        className="p-2 rounded-lg hover:bg-orange-50 text-gray-500 hover:text-orange-600"
+                        className="p-2 hover:bg-orange-50 rounded"
                       >
                         <Power size={16} />
                       </button>
@@ -164,17 +164,11 @@ export default function DashboardPage() {
                             }).then(fetchData);
                           }
                         }}
-                        className="p-2 rounded-lg hover:bg-red-50 text-gray-500 hover:text-red-600"
+                        className="p-2 hover:bg-red-50 rounded"
                       >
                         <Trash2 size={16} />
                       </button>
                     </div>
-
-                    {copiedId === link.id && (
-                      <p className="text-xs text-green-600 text-center mt-1">
-                        Copied!
-                      </p>
-                    )}
                   </td>
                 </tr>
               ))}
@@ -185,41 +179,10 @@ export default function DashboardPage() {
 
       {/* QR MODAL */}
       {qrLink && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center">
-          <div className="bg-white rounded-xl shadow-xl w-[360px] p-6 relative animate-fadeIn">
-            <button
-              onClick={() => setQrLink(null)}
-              className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"
-            >
-              <X size={18} />
-            </button>
-
-            <h3 className="font-semibold text-center mb-4">
-              QR Code
-            </h3>
-
-            <img
-              className="mx-auto"
-              src={`/api/qr?code=${qrLink.shortCode}`}
-              alt="QR Code"
-            />
-
-            <p className="text-center text-sm text-gray-600 mt-4 break-all">
-              {window.location.origin}/{qrLink.shortCode}
-            </p>
-
-            <button
-              onClick={() =>
-                navigator.clipboard.writeText(
-                  `${window.location.origin}/${qrLink.shortCode}`
-                )
-              }
-              className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
-            >
-              Copy Link
-            </button>
-          </div>
-        </div>
+        <QRModal
+          shortCode={qrLink.shortCode}
+          onClose={() => setQrLink(null)}
+        />
       )}
     </div>
   );
@@ -235,10 +198,10 @@ function StatCard({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow-sm p-6 flex items-center justify-between">
+    <div className="bg-white border rounded-xl p-6 flex justify-between">
       <div>
         <p className="text-sm text-gray-500">{title}</p>
-        <p className="text-3xl font-bold mt-1">{value}</p>
+        <p className="text-3xl font-bold">{value}</p>
       </div>
       <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
         {icon}
