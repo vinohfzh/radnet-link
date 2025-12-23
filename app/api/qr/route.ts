@@ -1,5 +1,5 @@
-import QRCode from "qrcode";
 import { NextResponse } from "next/server";
+import QRCode from "qrcode";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -11,17 +11,20 @@ export async function GET(req: Request) {
 
   const url = `${process.env.NEXT_PUBLIC_BASE_URL}/${code}`;
 
-  const qr = await QRCode.toBuffer(url, {
+  const buffer = await QRCode.toBuffer(url, {
     type: "png",
     width: 300,
     margin: 2,
+    errorCorrectionLevel: "H",
   });
 
-  return new NextResponse(qr, {
-    status: 200,
-    headers: {
-      "Content-Type": "image/png",
-      "Cache-Control": "no-store",
-    },
-  });
+  return new NextResponse(
+    new Uint8Array(buffer),
+    {
+      headers: {
+        "Content-Type": "image/png",
+        "Cache-Control": "no-store",
+      },
+    }
+  );
 }
